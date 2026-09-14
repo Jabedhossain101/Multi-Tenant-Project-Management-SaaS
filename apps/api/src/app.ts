@@ -3,11 +3,15 @@ import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import { env } from './config/env.js';
+import { requestLogger } from './middleware/logging.middleware.js';
+import { standardApiLimiter } from './middleware/rate-limit.middleware.js';
+import { errorHandler } from './middleware/error.middleware.js';
+import apiRouter from './routes/index.js';
 
 export function createApp(): Express {
   const app = express();
 
-  // Security & standard middlewares
+  // 1. Security & Logging middlewares
   app.use(helmet());
   app.use(
     cors({
@@ -16,10 +20,9 @@ export function createApp(): Express {
     }),
   );
   app.use(cookieParser(env.COOKIE_SECRET));
-  app.use(express.json({ limit: '10mb' }));
-  app.use(express.urlencoded({ extended: true }));
+  app.use(requestLogger);
 
-  // Health check endpoint
+  // 2. Health check route
   app.get('/health', (_req: Request, res: Response) => {
     res.status(200).json({
       status: 'ok',
@@ -28,14 +31,27 @@ export function createApp(): Express {
     });
   });
 
-  // Basic API base router
-  app.get('/api/v1', (_req: Request, res: Response) => {
-    res.status(200).json({
-      name: 'Multi-Tenant AI Project Management SaaS API',
-      version: '1.0.0',
-      status: 'active',
-    });
-  });
+  // 3. Body parsers (JSON & urlencoded, preserving raw body for webhooks)
+  app.use(
+    express.json({
+      limit: '10mb',
+      verify: (req: Request, _res, buf) => {
+        if (req.originalUrl.includes('/billing/webhook')) {
+          (req as unknown as { rawBody?: Buffer }).rawBody = buf;
+        }
+      },
+    }),
+  );
+  app.use(express.urlencoded({ extended: true }));
+
+  // 4. Rate limiting for API routes
+  app.use('/api/v1', standardApiLimiter);
+
+  // 5. Mount Versioned REST API Router
+  app.use('/api/v1', apiRouter);
+
+  // 6. Centralized Error Handling Middleware
+  app.use(errorHandler);
 
   return app;
 }

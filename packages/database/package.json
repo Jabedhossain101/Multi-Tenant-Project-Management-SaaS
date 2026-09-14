@@ -13,17 +13,20 @@
     }
   },
   "scripts": {
-    "build": "pnpm db:generate && tsc --project tsconfig.json",
+    "build": "pnpm db:generate && tsc --project tsconfig.build.json",
     "type-check": "tsc --noEmit",
     "lint": "eslint .",
     "clean": "rimraf dist",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "test": "vitest run"
   },
   "dependencies": {
-    "@prisma/client": "^6.4.0"
+    "@prisma/client": "^6.4.0",
+    "argon2": "^0.41.1",
+    "dotenv": "^16.4.7"
   },
   "devDependencies": {
     "@tasksaas/config": "workspace:*",
@@ -32,6 +35,7 @@
     "prisma": "^6.4.0",
     "rimraf": "^6.0.1",
     "tsx": "^4.19.3",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
   }
 }
